@@ -1,0 +1,47 @@
+apiVersion: "kubeflow.org/v1"
+kind: PyTorchJob
+metadata:
+  name: belle-bloom-7b-120k
+  namespace: mlops-gomall
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          volumes:
+            - name: modelpv
+              persistentVolumeClaim:
+                claimName: pretrained-models-volume
+            - name: codepv
+              persistentVolumeClaim:
+                claimName: code-belle-volume
+            - emptyDir:
+              medium: Memory
+              sizeLimit: 1Gi # 适量分配
+              name: cache-volume
+          containers:
+            - name: pytorch
+              image: registry.ccloud.conestore.cn:8443/chatgpt/torch:v0.0.3
+              imagePullPolicy: Always
+              volumeMounts:
+                - mountPath: /model
+                  name: modelpv
+                - mountPath: /code
+                  name: codepv
+                - mountPath: /dev/shm
+                  name: cache-volume
+              resources:
+                limits:
+                  cpu: 8
+                  nvidia.com/gpu: 4
+                  memory: "120Gi"
+                requests:
+                  memory: "100Gi"
+              command:
+                - "sh"
+                - "/code/gogpt/train_singonode.sh"

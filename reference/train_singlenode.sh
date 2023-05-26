@@ -1,0 +1,16 @@
+python train.py \
+    --model_name_or_path /data/searchgpt/pretrained_models/bloom-560m \
+    --data_path opendata \
+    --bf16 True \
+    --output_dir output-bloom-560m \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 8 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 200 \
+    --save_total_limit 10 \
+    --learning_rate 2e-5 \
+    --logging_steps 10 \
+    --tf32 False
