@@ -1,16 +1,16 @@
-CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun --nproc_per_node 8 train_pt.py \
+deepspeed --num_gpus=8 train_pt.py \
     --model_type llama \
     --model_name_or_path /data/searchgpt/pretrained_models/llama-13b-hf \
     --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf \
     --train_file_dir data/pretrain/train \
     --validation_file_dir data/pretrain/valid \
-    --per_device_train_batch_size 4 \
-    --per_device_eval_batch_size 4 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
     --do_train \
     --do_eval \
-    --use_peft True \
+    --use_peft False \
     --seed 42 \
-    --fp16 \
+    --bf16 True \
     --num_train_epochs 1 \
     --learning_rate 2e-4 \
     --warmup_ratio 0.05 \
@@ -22,9 +22,9 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun --nproc_per_node 8 train_pt.py \
     --save_steps 500 \
     --save_strategy steps \
     --save_total_limit 3 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 8 \
     --preprocessing_num_workers 8 \
-    --block_size 1024 \
+    --block_size 2048 \
     --output_dir outputs-pt-v1 \
     --overwrite_output_dir \
     --ddp_timeout 30000 \
@@ -37,4 +37,5 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun --nproc_per_node 8 train_pt.py \
     --device_map auto \
     --report_to tensorboard \
     --ddp_find_unused_parameters False \
-    --gradient_checkpointing True
+    --gradient_checkpointing True \
+    --deepspeed "./configs/default_offlload_zero2.json"

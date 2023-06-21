@@ -375,6 +375,7 @@ def main():
     tokenizer = tokenizer_class.from_pretrained(tokenizer_name_or_path, **tokenizer_kwargs)
 
     model_vocab_size = model.get_output_embeddings().weight.size(0)
+    logger.info(model_vocab_size)
     if not (
             (model_vocab_size == 32000 and len(tokenizer) == 87348) or \
             (model_vocab_size == 32000 and len(tokenizer) == 32000) or \
@@ -391,7 +392,7 @@ def main():
 
     model.resize_token_embeddings(len(tokenizer))
     model_vocab_size = model.get_output_embeddings().weight.size(0)
-    logger.info("model_vocab_size====>",model_vocab_size)
+    logger.info(f"model_vocab_size====>{model_vocab_size}")
     if training_args.use_peft:
         if training_args.peft_path is not None:
             logger.info(f"Peft from pre-trained model: {training_args.peft_path}")
