@@ -39,6 +39,8 @@ from transformers import (
     is_torch_tpu_available,
     set_seed,
 )
+from transformers import AdamW,get_linear_schedule_with_warmup
+from transformers import SchedulerType
 from transformers.trainer import TRAINING_ARGS_NAME
 from transformers.utils import send_example_telemetry
 from transformers.utils.versions import require_version

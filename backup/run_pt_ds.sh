@@ -4,7 +4,6 @@ deepspeed --num_gpus=8 train_pt.py \
     --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf \
     --train_file_dir data/pretrain/train \
     --validation_file_dir data/pretrain/valid \
-    --resume_from_checkpoint /data/searchgpt/yq/GoGPT/outputs-pt-v1/checkpoint-4500 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --do_train \
@@ -23,13 +22,17 @@ deepspeed --num_gpus=8 train_pt.py \
     --save_steps 500 \
     --save_strategy steps \
     --save_total_limit 3 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 8 \
     --preprocessing_num_workers 8 \
     --block_size 2048 \
     --output_dir outputs-pt-v1 \
     --overwrite_output_dir \
     --ddp_timeout 30000 \
     --logging_first_step True \
+    --target_modules all \
+    --lora_rank 8 \
+    --lora_alpha 16 \
+    --lora_dropout 0.05 \
     --torch_dtype bfloat16 \
     --device_map auto \
     --report_to tensorboard \
