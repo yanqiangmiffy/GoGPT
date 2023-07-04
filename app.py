@@ -19,7 +19,7 @@ LlamaTokenizer,
 )
 
 
-model_name = "/home/searchgpt/pretrained_models/llama-13b-sft-9000"
+model_name = "/home/searchgpt/pretrained_models/llama-13b-sft-500"
 max_new_tokens = 2048
 
 

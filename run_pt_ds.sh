@@ -1,7 +1,7 @@
 deepspeed --num_gpus=8 train_pt.py \
     --model_type llama \
     --model_name_or_path /data/searchgpt/pretrained_models/llama-13b-hf \
-    --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf \
+    --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf_60k \
     --train_file_dir data/pretrain/train \
     --validation_file_dir data/pretrain/valid \
     --resume_from_checkpoint /data/searchgpt/yq/GoGPT/outputs-pt-v1/checkpoint-4500 \
@@ -11,7 +11,7 @@ deepspeed --num_gpus=8 train_pt.py \
     --do_eval \
     --use_peft False \
     --seed 42 \
-    --bf16 True \
+    --fp16 True \
     --num_train_epochs 1 \
     --learning_rate 2e-4 \
     --warmup_ratio 0.05 \
