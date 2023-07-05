@@ -12,26 +12,21 @@ import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-LlamaTokenizer,
     StoppingCriteria,
     StoppingCriteriaList,
     TextIteratorStreamer,
 )
 
 
-model_name = "/home/searchgpt/pretrained_models/llama-13b-sft-9000"
+model_name = "/home/searchgpt/pretrained_models/gogpt-3b"
 max_new_tokens = 2048
 
 
 print(f"Starting to load the model {model_name} into memory")
 
-tok = LlamaTokenizer.from_pretrained(model_name)
-print(tok)
+tok = AutoTokenizer.from_pretrained(model_name)
 #m = AutoModelForCausalLM.from_pretrained(model_name).eval()
-m = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
-m.half()
-m.eval()
-
+m = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
 print("m=====>device",m.device)
 # tok.convert_tokens_to_ids(["<|im_end|>", "<|endoftext|>"])
 stop_token_ids = [tok.eos_token_id]
@@ -168,10 +163,21 @@ def get_uuid():
     return str(uuid4())
 
 
-with gr.Blocks(
-    theme=gr.themes.Soft(),
-    css=".disclaimer {font-variant-caps: all-small-caps;}",
-) as demo:
+# with gr.Blocks(
+#     theme=gr.themes.Soft(),
+#     css=".disclaimer {font-variant-caps: all-small-caps;}",
+# ) as demo:
+with gr.Blocks(title="GoGPT",
+               theme=gr.themes.Soft(),
+               css=".disclaimer {font-variant-caps: all-small-caps;}",
+               ) as demo:
+    gr.Markdown(
+        """ # <center>GoGPT</center>
+
+        ### <center>ICT网络数据实验室基于LLaMA训练的中文增强底座模型，支持对话、问答、续写、生成等多种能力</center>
+
+    """
+    )
     conversation_id = gr.State(get_uuid)
     chatbot = gr.Chatbot().style(height=500)
     with gr.Row():
