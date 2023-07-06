@@ -3,33 +3,26 @@
 """
 @author:quincy qiang
 @license: Apache Licence
-@file: train_pt.py
-@time: 2023/06/19
+@file: train_sft.py
+@time: 2023/07/03
 @contact: yanqiangmiffy@gamil.com
 @software: PyCharm
-@description:
-    https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm.py
-    https://github.com/ymcui/Chinese-LLaMA-Alpaca/main/scripts/training/run_clm_pt_with_peft.py
+@description: coding..
 """
 import math
 import os
 from dataclasses import dataclass, field
 from glob import glob
-from itertools import chain
-from typing import Optional, List, Dict, Any, Mapping
+from typing import Optional
 
-import numpy as np
 import torch
-import transformers
 from datasets import load_dataset
 from loguru import logger
 from peft import LoraConfig, TaskType, get_peft_model, PeftModel, prepare_model_for_int8_training
-from sklearn.metrics import accuracy_score
 from transformers import (
-    MODEL_FOR_CAUSAL_LM_MAPPING,
     BloomForCausalLM,
-    AutoModelForCausalLM,
     AutoModel,
+    AutoModelForCausalLM,
     LlamaTokenizer,
     LlamaForCausalLM,
     BloomTokenizerFast,
@@ -37,21 +30,26 @@ from transformers import (
     HfArgumentParser,
     Trainer,
     TrainingArguments,
-    is_torch_tpu_available,
     set_seed,
+    DataCollatorForSeq2Seq,
 )
 from transformers.trainer import TRAINING_ARGS_NAME
 from transformers.utils import send_example_telemetry
-from transformers.utils.versions import require_version
 
 MODEL_CLASSES = {
     "bloom": (BloomForCausalLM, BloomTokenizerFast),
     "chatglm": (AutoModel, AutoTokenizer),
     "llama": (LlamaForCausalLM, LlamaTokenizer),
+    "baichuan": (AutoModelForCausalLM, AutoTokenizer),
     "auto": (AutoModelForCausalLM, AutoTokenizer),
 }
-MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
-MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+
+IGNORE_INDEX = -100
+PROMPT_TEMPLATE = (
+    "Below is an instruction that describes a task. "
+    "Write a response that appropriately completes the request.\n\n"
+    "### Instruction:\n{instruction}\n\n### Response: "
+)
 
 
 @dataclass
@@ -90,7 +88,7 @@ class ModelArguments:
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
     torch_dtype: Optional[str] = field(
-        default=None,
+        default="float16",
         metadata={
             "help": (
                 "Override the default `torch.dtype` and load the model under this dtype. If `auto` is passed, the "
@@ -129,11 +127,10 @@ class DataTrainingArguments:
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
     )
-    train_file_dir: Optional[str] = field(default=None, metadata={"help": "The train text data file folder."})
-    validation_file_dir: Optional[str] = field(
-        default=None,
-        metadata={"help": "An optional input evaluation data file to evaluate the perplexity on text file folder."},
-    )
+    train_file_dir: Optional[str] = field(default=None, metadata={"help": "The train jsonl data file folder."})
+    validation_file_dir: Optional[str] = field(default=None, metadata={"help": "The evaluation jsonl file folder."})
+    max_source_length: Optional[int] = field(default=256, metadata={"help": "Max length of prompt input text"})
+    max_target_length: Optional[int] = field(default=256, metadata={"help": "Max length of output text"})
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -152,17 +149,6 @@ class DataTrainingArguments:
             )
         },
     )
-    streaming: bool = field(default=False, metadata={"help": "Enable streaming mode"})
-    block_size: Optional[int] = field(
-        default=1024,
-        metadata={
-            "help": (
-                "Optional input sequence length after tokenization. "
-                "The training dataset will be truncated in block of this size for training. "
-                "Default to the model max input length for single sentence inputs (take into account special tokens)."
-            )
-        },
-    )
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
     )
@@ -176,13 +162,6 @@ class DataTrainingArguments:
         default=None,
         metadata={"help": "The number of processes to use for the preprocessing."},
     )
-    keep_linebreaks: bool = field(
-        default=True, metadata={"help": "Whether to keep line breaks when using TXT files or not."}
-    )
-
-    def __post_init__(self):
-        if self.streaming:
-            require_version("datasets>=2.0.0", "The streaming feature requires `datasets>=2.0.0`")
 
 
 @dataclass
@@ -193,73 +172,14 @@ class PeftArguments(TrainingArguments):
     lora_dropout: Optional[float] = field(default=0.05)
     lora_alpha: Optional[float] = field(default=32.0)
     modules_to_save: Optional[str] = field(default=None)
-    peft_path: Optional[str] = field(default=None)
+    peft_path: Optional[str] = field(default=None, metadata={"help": "The path to the peft model"})
 
 
-def accuracy(predictions, references, normalize=True, sample_weight=None):
-    return {
-        "accuracy": float(accuracy_score(references, predictions, normalize=normalize, sample_weight=sample_weight))
-    }
+class CastOutputToFloat(torch.nn.Sequential):
+    """Cast the output of the model to float"""
 
-
-def compute_metrics(eval_preds):
-    preds, labels = eval_preds
-    # preds have the same shape as the labels, after the argmax(-1) has been calculated
-    # by preprocess_logits_for_metrics, we need to shift the labels
-    labels = labels[:, 1:].reshape(-1)
-    preds = preds[:, :-1].reshape(-1)
-    return accuracy(predictions=preds, references=labels)
-
-
-def preprocess_logits_for_metrics(logits, labels):
-    if isinstance(logits, tuple):
-        # Depending on the model and config, logits may contain extra tensors,
-        # like past_key_values, but logits always come first
-        logits = logits[0]
-    return logits.argmax(dim=-1)
-
-
-def fault_tolerance_data_collator(features: List) -> Dict[str, Any]:
-    if not isinstance(features[0], Mapping):
-        features = [vars(f) for f in features]
-    first = features[0]
-    batch = {}
-
-    # Special handling for labels.
-    # Ensure that tensor is created with the correct type
-    if "label" in first and first["label"] is not None:
-        label = first["label"].item() if isinstance(first["label"], torch.Tensor) else first["label"]
-        dtype = torch.long if isinstance(label, int) else torch.float
-        batch["labels"] = torch.tensor([f["label"] for f in features], dtype=dtype)
-    elif "label_ids" in first and first["label_ids"] is not None:
-        if isinstance(first["label_ids"], torch.Tensor):
-            batch["labels"] = torch.stack([f["label_ids"] for f in features])
-        else:
-            dtype = torch.long if type(first["label_ids"][0]) is int else torch.float
-            batch["labels"] = torch.tensor([f["label_ids"] for f in features], dtype=dtype)
-
-    # Handling of all other possible keys.
-    # Again, we will use the first element to figure out which key/values are not None for this model.
-    try:
-        for k, v in first.items():
-            if k not in ("label", "label_ids") and v is not None and not isinstance(v, str):
-                if isinstance(v, torch.Tensor):
-                    batch[k] = torch.stack([f[k] for f in features])
-                elif isinstance(v, np.ndarray):
-                    batch[k] = torch.tensor(np.stack([f[k] for f in features]))
-                else:
-                    batch[k] = torch.tensor([f[k] for f in features])
-    except ValueError:  # quick fix by simply take the first example
-        for k, v in first.items():
-            if k not in ("label", "label_ids") and v is not None and not isinstance(v, str):
-                if isinstance(v, torch.Tensor):
-                    batch[k] = torch.stack([features[0][k]] * len(features))
-                elif isinstance(v, np.ndarray):
-                    batch[k] = torch.tensor(np.stack([features[0][k]] * len(features)))
-                else:
-                    batch[k] = torch.tensor([features[0][k]] * len(features))
-
-    return batch
+    def forward(self, x):
+        return super().forward(x).to(torch.float32)
 
 
 class SavePeftModelTrainer(Trainer):
@@ -315,45 +235,16 @@ def find_all_linear_names(peft_model, int4=False, int8=False):
             # last layer is not add to lora_module_names
             if 'lm_head' in name:
                 continue
+            if 'output_layer' in name:
+                continue
             names = name.split('.')
             lora_module_names.add(names[0] if len(names) == 1 else names[-1])
     return sorted(lora_module_names)
 
 
-def smart_tokenizer_and_embedding_resize(
-        num_new_tokens: int,
-        tokenizer: transformers.PreTrainedTokenizer,
-        model: transformers.PreTrainedModel,
-):
-    """Resize tokenizer and embedding.
-
-    Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
-    """
-    logger.info("smart_tokenizer_and_embedding_resize")
-
-    model.resize_token_embeddings(len(tokenizer))
-
-    if num_new_tokens > 0:
-        input_embeddings = model.get_input_embeddings().weight.data
-        output_embeddings = model.get_output_embeddings().weight.data
-
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-
-        input_embeddings[-num_new_tokens:] = input_embeddings_avg
-        output_embeddings[-num_new_tokens:] = output_embeddings_avg
-
-    model_vocab_size = model.get_output_embeddings().weight.size(0)
-    logger.info(f"model_vocab_size====>{model_vocab_size}")
-
-
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, PeftArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
-    # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
-    # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    send_example_telemetry("run_pt", model_args, data_args)
 
     logger.warning(f"Model args: {model_args}")
     logger.warning(f"Data args: {data_args}")
@@ -366,11 +257,11 @@ def main():
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    # Load pretrained model and tokenizer
+    # Load model
     if not model_args.model_type:
         raise ValueError("Please specify a model_type, e.g. llama, chatglm, bloom, etc.")
     model_class, tokenizer_class = MODEL_CLASSES[model_args.model_type]
-    if model_args.model_type and model_args.model_name_or_path:
+    if model_args.model_name_or_path:
         torch_dtype = (
             model_args.torch_dtype
             if model_args.torch_dtype in ["auto", None]
@@ -387,9 +278,12 @@ def main():
             device_map=model_args.device_map,
             trust_remote_code=model_args.trust_remote_code,
         )
+        if hasattr(model, 'lm_head'):
+            model.lm_head = CastOutputToFloat(model.lm_head)
     else:
-        raise ValueError(f"Error, model_name_or_path is None, Continue PT must be loaded from a pre-trained model")
+        raise ValueError(f"Error, model_name_or_path is None, SFT must be loaded from a pre-trained model")
 
+    # Load tokenizer
     tokenizer_kwargs = {
         "cache_dir": model_args.cache_dir,
         "use_fast": model_args.use_fast_tokenizer,
@@ -399,27 +293,16 @@ def main():
     if not tokenizer_name_or_path:
         tokenizer_name_or_path = model_args.model_name_or_path
     tokenizer = tokenizer_class.from_pretrained(tokenizer_name_or_path, **tokenizer_kwargs)
-
-    model_vocab_size = model.get_output_embeddings().weight.size(0)
-    logger.info(f"raw model_vocab_size====>{model_vocab_size}")
-    if not (
-            (model_vocab_size == 32000 and len(tokenizer) == 87348) or \
-            (model_vocab_size == 32000 and len(tokenizer) == 68419) or \
-            (model_vocab_size == 32000 and len(tokenizer) == 32000) or \
-            (model_vocab_size == 87348 and len(tokenizer) == 87348) or \
-            (model_vocab_size == 49954 and len(tokenizer) == 49954)
-    ):
-        raise ValueError(
-            f"The combination of base model (size: {model_vocab_size}) and tokenizer (size: {len(tokenizer)}) is not a valid configuration. Please check our project wiki for further information. \n"
-            "Valid configurations (base model / tokenizer):\n"
-            "- Continue pre-training original LLaMA: 32000 / 32000 \n"
-            "- Pre-training Chinese LLaMA based on original LLaMA: 32000 / 87348 \n"
-            "- Continue pre-training Chinese LLaMA: 87348 / 87348 \n"
-            "- Continue pre-training Chinese Alpaca: 49954 / 49954 \n")
-
-    smart_tokenizer_and_embedding_resize(num_new_tokens=len(tokenizer) - 32000, tokenizer=tokenizer, model=model)
-
-    # model.resize_token_embeddings(len(tokenizer))
+    tokenizer.padding_side = "left"  # Set padding side equal to the collator's padding side
+    if model_args.model_type != "chatglm":
+        tokenizer.pad_token_id = 0  # Set pad token id to 0
+    # Set special tokens for chatglm2
+    if tokenizer.eos_token is None:
+        tokenizer.add_special_tokens({
+            "eos_token": "</s>",
+            "bos_token": "<sop>",
+            "unk_token": "<unk>",
+        })
 
     if training_args.use_peft:
         if training_args.peft_path is not None:
@@ -451,60 +334,16 @@ def main():
         logger.info("Full parameters training")
         print_trainable_parameters(model)
 
-    # Preprocessing the datasets.
-    def tokenize_function(examples):
-        return tokenizer(examples["text"])
+    logger.debug(f"Tokenizer: {tokenizer}")
+    logger.debug(f"Model: {model}")
 
-    if data_args.block_size is None:
-        block_size = tokenizer.model_max_length
-        if block_size > 1024:
-            logger.warning(
-                "The chosen tokenizer supports a `model_max_length` that is longer than the default `block_size` value"
-                " of 1024. If you would like to use a longer `block_size` up to `tokenizer.model_max_length` you can"
-                " override this default with `--block_size xxx`."
-            )
-            block_size = 1024
-    else:
-        if data_args.block_size > tokenizer.model_max_length:
-            logger.warning(
-                f"The block_size passed ({data_args.block_size}) is larger than the maximum length for the model"
-                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}."
-            )
-        block_size = min(data_args.block_size, tokenizer.model_max_length)
-
-    # Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
-    def group_texts(examples):
-        # Concatenate all texts.
-        concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-        # customize this part to your needs.
-        if total_length >= block_size:
-            total_length = (total_length // block_size) * block_size
-        # Split by chunks of max_len.
-        result = {
-            k: [t[i: i + block_size] for i in range(0, total_length, block_size)]
-            for k, t in concatenated_examples.items()
-        }
-        result["labels"] = result["input_ids"].copy()
-        return result
-
-    # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
-    # or just provide the name of one of the public datasets available on the hub at https://huggingface.co/datasets/
-    # (the dataset will be downloaded automatically from the datasets Hub).
-    #
-    # For CSV/JSON files, this script will use the column called 'text' or the first column if no column called
-    # 'text' is found. You can easily tweak this behavior (see below).
-    #
-    # In distributed training, the load_dataset function guarantee that only one local process can concurrently
-    # download the dataset.
+    # Get datasets
     if data_args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(
             data_args.dataset_name,
             data_args.dataset_config_name,
             cache_dir=model_args.cache_dir,
-            streaming=data_args.streaming,
         )
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
@@ -512,113 +351,126 @@ def main():
                 data_args.dataset_config_name,
                 split=f"train[:{data_args.validation_split_percentage}%]",
                 cache_dir=model_args.cache_dir,
-                streaming=data_args.streaming,
             )
             raw_datasets["train"] = load_dataset(
                 data_args.dataset_name,
                 data_args.dataset_config_name,
                 split=f"train[{data_args.validation_split_percentage}%:]",
                 cache_dir=model_args.cache_dir,
-                streaming=data_args.streaming,
             )
     else:
+        # Loading a dataset from local files.
         data_files = {}
-        dataset_args = {}
         if data_args.train_file_dir is not None and os.path.exists(data_args.train_file_dir):
-            train_data_files = glob(f'{data_args.train_file_dir}/**/*.txt', recursive=True)
+            train_data_files = glob(f'{data_args.train_file_dir}/**/*.json', recursive=True) + glob(
+                f'{data_args.train_file_dir}/**/*.jsonl', recursive=True)
             logger.info(f"train files: {', '.join(train_data_files)}")
             data_files["train"] = train_data_files
         if data_args.validation_file_dir is not None and os.path.exists(data_args.validation_file_dir):
-            eval_data_files = glob(f'{data_args.validation_file_dir}/**/*.txt', recursive=True)
+            eval_data_files = glob(f'{data_args.validation_file_dir}/**/*.json', recursive=True) + glob(
+                f'{data_args.validation_file_dir}/**/*.jsonl', recursive=True)
             logger.info(f"eval files: {', '.join(eval_data_files)}")
             data_files["validation"] = eval_data_files
-        extension = "text"
-        dataset_args["keep_linebreaks"] = data_args.keep_linebreaks
         raw_datasets = load_dataset(
-            extension,
+            'json',
             data_files=data_files,
             cache_dir=model_args.cache_dir,
-            **dataset_args,
         )
         # If no validation data is there, validation_split_percentage will be used to divide the dataset.
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
-                extension,
+                'json',
                 data_files=data_files,
                 split=f"train[:{data_args.validation_split_percentage}%]",
                 cache_dir=model_args.cache_dir,
-                **dataset_args,
             )
             raw_datasets["train"] = load_dataset(
-                extension,
+                'json',
                 data_files=data_files,
                 split=f"train[{data_args.validation_split_percentage}%:]",
                 cache_dir=model_args.cache_dir,
-                **dataset_args,
             )
     logger.info(f"Raw datasets: {raw_datasets}")
 
-    # Preprocessing the datasets.
-    if training_args.do_train:
-        column_names = list(raw_datasets["train"].features)
-    else:
-        column_names = list(raw_datasets["validation"].features)
+    # Preprocessing the datasets
+    max_source_length = data_args.max_source_length
+    max_target_length = data_args.max_target_length
+    full_max_length = max_source_length + max_target_length
 
-    with training_args.main_process_first(desc="Dataset tokenization and grouping"):
-        if not data_args.streaming:
-            tokenized_datasets = raw_datasets.map(
-                tokenize_function,
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                remove_columns=column_names,
-                load_from_cache_file=not data_args.overwrite_cache,
-                desc="Running tokenizer on dataset",
-            )
-            lm_datasets = tokenized_datasets.map(
-                group_texts,
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                load_from_cache_file=not data_args.overwrite_cache,
-                desc=f"Grouping texts in chunks of {block_size}",
-            )
-        else:
-            tokenized_datasets = raw_datasets.map(
-                tokenize_function,
-                batched=True,
-                remove_columns=column_names,
-            )
-            lm_datasets = tokenized_datasets.map(
-                group_texts,
-                batched=True,
-            )
+    def preprocess_function(examples):
+        sources = []
+        targets = []
+        for instruction, input, output in zip(examples['instruction'], examples['input'], examples['output']):
+            if input:
+                instruction = instruction + '\n' + input
+            source = PROMPT_TEMPLATE.format_map({'instruction': instruction})
+            target = f"{output}{tokenizer.eos_token}"
+
+            sources.append(source)
+            targets.append(target)
+
+        tokenized_sources = tokenizer(sources, truncation=True, max_length=max_source_length)
+        tokenized_targets = tokenizer(targets, add_special_tokens=False, truncation=True, max_length=max_target_length)
+
+        all_input_ids = []
+        all_labels = []
+        for s, t in zip(tokenized_sources['input_ids'], tokenized_targets['input_ids']):
+            input_ids = torch.LongTensor(s + t)
+            # Padding labels to full max length for Seq2SeqCollator
+            labels = torch.LongTensor([IGNORE_INDEX] * (full_max_length - len(t)) + t)
+            all_input_ids.append(input_ids)
+            all_labels.append(labels)
+        results = {'input_ids': all_input_ids, 'labels': all_labels}
+
+        return results
 
     train_dataset = None
     max_train_samples = 0
     if training_args.do_train:
-        if "train" not in tokenized_datasets:
+        if "train" not in raw_datasets:
             raise ValueError("--do_train requires a train dataset")
-        train_dataset = lm_datasets['train']
+        train_dataset = raw_datasets['train']
         max_train_samples = len(train_dataset)
         if data_args.max_train_samples is not None and data_args.max_train_samples > 0:
             max_train_samples = min(len(train_dataset), data_args.max_train_samples)
             train_dataset = train_dataset.select(range(max_train_samples))
-        logger.debug(f"Num train_samples: {len(train_dataset)}")
-        logger.debug("Tokenized training example:")
-        logger.debug(tokenizer.decode(train_dataset[0]['input_ids']))
+        logger.debug(f"Example train_dataset[0]: {train_dataset[0]}")
+        with training_args.main_process_first(desc="Train dataset tokenization"):
+            train_dataset = train_dataset.shuffle().map(
+                preprocess_function,
+                batched=True,
+                num_proc=data_args.preprocessing_num_workers,
+                remove_columns=train_dataset.column_names,
+                load_from_cache_file=not data_args.overwrite_cache,
+                desc="Running tokenizer on dataset",
+            )
+            logger.debug(f"Num train_samples: {len(train_dataset)}")
+            logger.debug("Tokenized training example:")
+            logger.debug(tokenizer.decode(train_dataset[0]['input_ids']))
 
     eval_dataset = None
     max_eval_samples = 0
     if training_args.do_eval:
-        if "validation" not in tokenized_datasets:
-            raise ValueError("--do_eval requires a validation dataset")
-        eval_dataset = lm_datasets["validation"]
-        max_eval_samples = len(eval_dataset)
-        if data_args.max_eval_samples is not None and data_args.max_eval_samples > 0:
-            max_eval_samples = min(len(eval_dataset), data_args.max_eval_samples)
-            eval_dataset = eval_dataset.select(range(max_eval_samples))
-        logger.debug(f"Num eval_samples: {len(eval_dataset)}")
-        logger.debug("Tokenized eval example:")
-        logger.debug(tokenizer.decode(eval_dataset[0]['input_ids']))
+        with training_args.main_process_first(desc="Eval dataset tokenization"):
+            if "validation" not in raw_datasets:
+                raise ValueError("--do_eval requires a validation dataset")
+            eval_dataset = raw_datasets["validation"]
+            max_eval_samples = len(eval_dataset)
+            if data_args.max_eval_samples is not None and data_args.max_eval_samples > 0:
+                max_eval_samples = min(len(eval_dataset), data_args.max_eval_samples)
+                eval_dataset = eval_dataset.select(range(max_eval_samples))
+            logger.debug(f"Example eval_dataset[0]: {eval_dataset[0]}")
+            eval_dataset = eval_dataset.map(
+                preprocess_function,
+                batched=True,
+                num_proc=data_args.preprocessing_num_workers,
+                remove_columns=eval_dataset.column_names,
+                load_from_cache_file=not data_args.overwrite_cache,
+                desc="Running tokenizer on dataset",
+            )
+            logger.debug(f"Num eval_samples: {len(eval_dataset)}")
+            logger.debug("Tokenized eval example:")
+            logger.debug(tokenizer.decode(eval_dataset[0]['input_ids']))
 
     # Initialize our Trainer
     if training_args.gradient_checkpointing:
@@ -626,45 +478,34 @@ def main():
         model.config.use_cache = False
     else:
         model.config.use_cache = True
-    model.enable_input_require_grads()
+
+    try:
+        model.enable_input_require_grads()
+    except:
+        logger.warning(f"Could not enable input require_grads on model, skipping.")
     if torch.cuda.device_count() > 1:
         # Keeps Trainer from trying its own DataParallelism when more than 1 gpu is available
         model.is_parallelizable = True
         model.model_parallel = True
-
-    # 冻结模型参数
-    for name, param in model.named_parameters():
-        param.requires_grad = False
-
-    unfreeze_params = ['embed tokens', 'lm_head']
-    for name, param in model.named_parameters():
-        for layer in unfreeze_params:
-            if layer in name:
-                param.requires_grad = True
-                param.data = param.data.to(torch.float32)
-                print(name)
-
-    # 计算可训练参数比例
-    trainable_ratio = model.num_parameters(only_trainable=True) / model.num_parameters()
-    logger.info(f'可训练参数占比: {trainable_ratio * 100}%')
-
+    data_collator = DataCollatorForSeq2Seq(
+        tokenizer,
+        return_tensors="pt",
+        padding="max_length",
+        max_length=full_max_length,
+    )
     trainer = SavePeftModelTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
-        data_collator=fault_tolerance_data_collator,
-        compute_metrics=compute_metrics if training_args.do_eval and not is_torch_tpu_available() else None,
-        preprocess_logits_for_metrics=preprocess_logits_for_metrics
-        if training_args.do_eval and not is_torch_tpu_available()
-        else None,
+        data_collator=data_collator,
     )
 
     # Training
     if training_args.do_train:
         logger.info("*** Train ***")
-        logger.debug(f"Train dataloader example: {list(trainer.get_train_dataloader())[0]}")
+        logger.debug(f"Train dataloader example: {next(iter(trainer.get_train_dataloader()))}")
         checkpoint = None
         if training_args.resume_from_checkpoint is not None:
             checkpoint = training_args.resume_from_checkpoint

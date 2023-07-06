@@ -1,0 +1,17 @@
+CUDA_VISIBLE_DEVICES=0,1,2,3 python train_3b.py \
+    --model_name_or_path /data/searchgpt/pretrained_models/gogpt-7b-v2 \
+    --data_path /data/searchgpt/yq/GoGPT/data/finetune/generated_chat \
+    --bf16 True \
+    --output_dir output-gogpt-rolechat \
+    --num_train_epochs 2 \
+    --per_device_train_batch_size 8 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 1000 \
+    --save_total_limit 3 \
+    --learning_rate 2e-5 \
+    --logging_steps 10 \
+    --tf32 False \
+    --model_max_length 1024

@@ -1,2 +1,5 @@
 data/finetune/opendata
 .idea
+cache_data
+data/finetune/examples/Belle_open_source_0.5M.json
+data

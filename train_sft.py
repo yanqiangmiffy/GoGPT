@@ -37,10 +37,7 @@ from transformers.trainer import TRAINING_ARGS_NAME
 from transformers.utils import send_example_telemetry
 
 MODEL_CLASSES = {
-    "bloom": (BloomForCausalLM, BloomTokenizerFast),
-    "chatglm": (AutoModel, AutoTokenizer),
     "llama": (LlamaForCausalLM, LlamaTokenizer),
-    "baichuan": (AutoModelForCausalLM, AutoTokenizer),
     "auto": (AutoModelForCausalLM, AutoTokenizer),
 }
 
@@ -164,15 +161,6 @@ class DataTrainingArguments:
     )
 
 
-@dataclass
-class PeftArguments(TrainingArguments):
-    use_peft: bool = field(default=True, metadata={"help": "Whether to use peft"})
-    target_modules: Optional[str] = field(default="all")
-    lora_rank: Optional[int] = field(default=8)
-    lora_dropout: Optional[float] = field(default=0.05)
-    lora_alpha: Optional[float] = field(default=32.0)
-    modules_to_save: Optional[str] = field(default=None)
-    peft_path: Optional[str] = field(default=None, metadata={"help": "The path to the peft model"})
 
 
 class CastOutputToFloat(torch.nn.Sequential):
@@ -220,30 +208,10 @@ def print_trainable_parameters(model):
     )
 
 
-def find_all_linear_names(peft_model, int4=False, int8=False):
-    """Find all linear layer names in the model. reference from qlora paper."""
-    cls = torch.nn.Linear
-    if int4 or int8:
-        import bitsandbytes as bnb
-        if int4:
-            cls = bnb.nn.Linear4bit
-        elif int8:
-            cls = bnb.nn.Linear8bitLt
-    lora_module_names = set()
-    for name, module in peft_model.named_modules():
-        if isinstance(module, cls):
-            # last layer is not add to lora_module_names
-            if 'lm_head' in name:
-                continue
-            if 'output_layer' in name:
-                continue
-            names = name.split('.')
-            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
-    return sorted(lora_module_names)
 
 
 def main():
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, PeftArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     logger.warning(f"Model args: {model_args}")
@@ -304,35 +272,8 @@ def main():
             "unk_token": "<unk>",
         })
 
-    if training_args.use_peft:
-        if training_args.peft_path is not None:
-            logger.info(f"Peft from pre-trained model: {training_args.peft_path}")
-            model = PeftModel.from_pretrained(model, training_args.peft_path, is_trainable=True)
-        else:
-            logger.info("Init new peft model")
-            target_modules = training_args.target_modules.split(',') if training_args.target_modules else None
-            if target_modules and 'all' in target_modules:
-                target_modules = find_all_linear_names(model, int4=False, int8=model_args.load_in_8bit)
-            modules_to_save = training_args.modules_to_save
-            if modules_to_save is not None:
-                modules_to_save = modules_to_save.split(',')
-            logger.info(f"Peft target_modules: {target_modules}")
-            logger.info(f"Peft lora_rank: {training_args.lora_rank}")
-            peft_config = LoraConfig(
-                task_type=TaskType.CAUSAL_LM,
-                target_modules=target_modules,
-                inference_mode=False,
-                r=training_args.lora_rank,
-                lora_alpha=training_args.lora_alpha,
-                lora_dropout=training_args.lora_dropout,
-                modules_to_save=modules_to_save)
-            model = get_peft_model(model, peft_config)
-        if model_args.load_in_8bit:
-            model = prepare_model_for_int8_training(model)
-        model.print_trainable_parameters()
-    else:
-        logger.info("Full parameters training")
-        print_trainable_parameters(model)
+    logger.info("Full parameters training")
+    print_trainable_parameters(model)
 
     logger.debug(f"Tokenizer: {tokenizer}")
     logger.debug(f"Model: {model}")
