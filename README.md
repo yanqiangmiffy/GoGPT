@@ -3,6 +3,31 @@
 
 ## step1：训练分词器
 
+[🐱怎么从零到一训练一个LLM分词器](https://github.com/yanqiangmiffy/how-to-train-tokenizer)
+```text
+├── data
+│     └── corpus.txt 训练语料
+├── llama
+│     ├── tokenizer_checklist.chk
+│     └── tokenizer.model
+├── merged_tokenizer_hf 合并结果 hf格式
+│     ├── special_tokens_map.json
+│     ├── tokenizer_config.json
+│     └── tokenizer.model
+├── merged_tokenizer_sp
+│     └── open_llama.model # 
+├── merge_tokenizer
+│     └── tokenizer.model
+├── open_llama.model 训练的sp模型
+├── open_llama.vocab 训练的sp词汇表
+├── README.md
+├── step0_step0_process_text.py 基于多分数据集准备训练语料
+├── step1_make_corpus.py 基于中文Wikipedia数据准备训练语料
+├── step2_train_tokenzier.py  训练分词器
+├── step3_tokenzier_segment.py 测试训练后的模型，包括编码和解码测试样例
+└── step4_merge_tokenizers.py 与原版llama的分词器进行合并，得到hf格式的tokenizer
+
+```
 ## step2：二次预训练
 > 在中文预训练语料上对LLaMA进行增量预训练、继续预训练
 ## step3: 有监督微调
