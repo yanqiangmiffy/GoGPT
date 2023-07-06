@@ -1,7 +1,8 @@
-deepspeed --num_gpus=8 train_pt.py \
+deepspeed --include localhost:4,5,6,7 --num_gpus=4 train_pt.py \
     --model_type llama \
     --model_name_or_path /data/searchgpt/pretrained_models/llama-7b-hf \
     --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf_40k \
+    --resume_from_checkpoint /data/searchgpt/yq/GoGPT/outputs-pt-v1-7b/checkpoint-11000 \
     --train_file_dir data/pretrain/train \
     --validation_file_dir data/pretrain/valid \
     --per_device_train_batch_size 1 \
@@ -9,7 +10,7 @@ deepspeed --num_gpus=8 train_pt.py \
     --do_train \
     --do_eval \
     --use_peft False \
-    --seed 42 \
+    --seed 2023 \
     --fp16 True \
     --num_train_epochs 1 \
     --learning_rate 2e-4 \
@@ -23,7 +24,7 @@ deepspeed --num_gpus=8 train_pt.py \
     --save_strategy steps \
     --save_total_limit 3 \
     --gradient_accumulation_steps 4 \
-    --preprocessing_num_workers 8 \
+    --preprocessing_num_workers 32 \
     --block_size 2048 \
     --output_dir outputs-pt-v1-7b \
     --overwrite_output_dir \
