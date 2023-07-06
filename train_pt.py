@@ -20,6 +20,7 @@ from typing import Optional, List, Dict, Any, Mapping
 
 import numpy as np
 import torch
+import transformers
 from datasets import load_dataset
 from loguru import logger
 from peft import LoraConfig, TaskType, get_peft_model, PeftModel, prepare_model_for_int8_training
@@ -39,8 +40,6 @@ from transformers import (
     is_torch_tpu_available,
     set_seed,
 )
-from transformers import AdamW,get_linear_schedule_with_warmup
-from transformers import SchedulerType
 from transformers.trainer import TRAINING_ARGS_NAME
 from transformers.utils import send_example_telemetry
 from transformers.utils.versions import require_version
@@ -53,6 +52,7 @@ MODEL_CLASSES = {
 }
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+
 
 @dataclass
 class ModelArguments:
@@ -262,8 +262,6 @@ def fault_tolerance_data_collator(features: List) -> Dict[str, Any]:
     return batch
 
 
-
-
 class SavePeftModelTrainer(Trainer):
     """
     Trainer for lora models
@@ -322,6 +320,33 @@ def find_all_linear_names(peft_model, int4=False, int8=False):
     return sorted(lora_module_names)
 
 
+def smart_tokenizer_and_embedding_resize(
+        num_new_tokens: int,
+        tokenizer: transformers.PreTrainedTokenizer,
+        model: transformers.PreTrainedModel,
+):
+    """Resize tokenizer and embedding.
+
+    Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
+    """
+    logger.info("smart_tokenizer_and_embedding_resize")
+
+    model.resize_token_embeddings(len(tokenizer))
+
+    if num_new_tokens > 0:
+        input_embeddings = model.get_input_embeddings().weight.data
+        output_embeddings = model.get_output_embeddings().weight.data
+
+        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+
+        input_embeddings[-num_new_tokens:] = input_embeddings_avg
+        output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
+    model_vocab_size = model.get_output_embeddings().weight.size(0)
+    logger.info(f"model_vocab_size====>{model_vocab_size}")
+
+
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, PeftArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
@@ -365,7 +390,6 @@ def main():
     else:
         raise ValueError(f"Error, model_name_or_path is None, Continue PT must be loaded from a pre-trained model")
 
-
     tokenizer_kwargs = {
         "cache_dir": model_args.cache_dir,
         "use_fast": model_args.use_fast_tokenizer,
@@ -377,9 +401,10 @@ def main():
     tokenizer = tokenizer_class.from_pretrained(tokenizer_name_or_path, **tokenizer_kwargs)
 
     model_vocab_size = model.get_output_embeddings().weight.size(0)
-    logger.info(model_vocab_size)
+    logger.info(f"raw model_vocab_size====>{model_vocab_size}")
     if not (
             (model_vocab_size == 32000 and len(tokenizer) == 87348) or \
+            (model_vocab_size == 32000 and len(tokenizer) == 68419) or \
             (model_vocab_size == 32000 and len(tokenizer) == 32000) or \
             (model_vocab_size == 87348 and len(tokenizer) == 87348) or \
             (model_vocab_size == 49954 and len(tokenizer) == 49954)
@@ -392,9 +417,10 @@ def main():
             "- Continue pre-training Chinese LLaMA: 87348 / 87348 \n"
             "- Continue pre-training Chinese Alpaca: 49954 / 49954 \n")
 
-    model.resize_token_embeddings(len(tokenizer))
-    model_vocab_size = model.get_output_embeddings().weight.size(0)
-    logger.info(f"model_vocab_size====>{model_vocab_size}")
+    smart_tokenizer_and_embedding_resize(num_new_tokens=len(tokenizer) - 32000, tokenizer=tokenizer, model=model)
+
+    # model.resize_token_embeddings(len(tokenizer))
+
     if training_args.use_peft:
         if training_args.peft_path is not None:
             logger.info(f"Peft from pre-trained model: {training_args.peft_path}")
@@ -605,6 +631,22 @@ def main():
         # Keeps Trainer from trying its own DataParallelism when more than 1 gpu is available
         model.is_parallelizable = True
         model.model_parallel = True
+
+    # 冻结模型参数
+    for name, param in model.named_parameters():
+        param.requires_grad = False
+
+    unfreeze_params = ['embed tokens', 'lm_head']
+    for name, param in model.named_parameters():
+        for layer in unfreeze_params:
+            if layer in name:
+                param.requires_grad = True
+                param.data = param.data.to(torch.float32)
+                print(name)
+
+    # 计算可训练参数比例
+    trainable_ratio = model.num_parameters(only_trainable=True) / model.num_arameters()
+    logger.info(f'可训练参数占比: {trainable_ratio * 100}%')
 
     trainer = SavePeftModelTrainer(
         model=model,
