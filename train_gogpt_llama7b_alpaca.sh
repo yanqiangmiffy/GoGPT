@@ -1,0 +1,17 @@
+CUDA_VISIBLE_DEVICES=0,1 python train_sft_v2.py \
+    --model_name_or_path /home/searchgpt/pretrained_models/gogpt-7b-v3 \
+    --data_path /home/searchgpt/yq/GoGPT/data/finetune/alpaca \
+    --bf16 True \
+    --output_dir vocab68k_pt_ckpt11000_alpaca52k_output \
+    --num_train_epochs 2 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 2 \
+    --gradient_accumulation_steps 2 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 2000 \
+    --save_total_limit 3 \
+    --learning_rate 2e-5 \
+    --logging_steps 10 \
+    --tf32 True \
+    --model_max_length 1024
