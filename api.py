@@ -50,9 +50,9 @@ async def create_item(request: Request):
     json_post_list = json.loads(json_post)
     raw_input_text = json_post_list.get('prompt')
     # history = json_post_list.get('history')
-    max_length = json_post_list.get('max_length')
-    top_p = json_post_list.get('top_p')
-    temperature = json_post_list.get('temperature')
+    # max_length = json_post_list.get('max_length')
+    # top_p = json_post_list.get('top_p')
+    # temperature = json_post_list.get('temperature')
     # response, history = model.chat(tokenizer,
     #                                prompt,
     #                                history=[],
@@ -78,7 +78,7 @@ async def create_item(request: Request):
         max_new_tokens=2048,
         temperature=0.1,
         do_sample=True,
-        top_p=top_p,
+        top_p=1.0,
         top_k=0,
         repetition_penalty=1.1,
     )
