@@ -1,8 +1,8 @@
 deepspeed --num_gpus=8  step3_train_sft_v2.py \
-    --model_name_or_path /data/searchgpt/yq/GoGPT/vocab68k_pt_ckpt4900_alpaca52kopendata120k_llma_13b_output_opendata/checkpoint-3000 \
-    --data_path /data/searchgpt/yq/GoGPT/data/finetune/alpaca_gpt4 \
+    --model_name_or_path /data/searchgpt/yq/GoGPT/vocab68k_pt_ckpt4900_alpaca52kopendata120k_llma_13b_output \
+    --data_path /data/searchgpt/yq/GoGPT/data/finetune \
     --bf16 True \
-    --output_dir vocab68k_pt_ckpt3000_alpaca_gpt4_llama_13b_output_opendata \
+    --output_dir vocab68k_pt_ckpt4900_alpaca52kopendata120k_llma_13b_output_opendata \
     --num_train_epochs 2 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \

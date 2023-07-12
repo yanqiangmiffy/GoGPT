@@ -240,7 +240,7 @@ def train():
     model = transformers.LlamaForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
-        #device_map='auto',
+        # device_map='auto',
         # torch_dtype='auto'
         torch_dtype=torch.bfloat16
 
