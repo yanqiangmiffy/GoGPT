@@ -43,7 +43,7 @@ class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
     model_max_length: int = field(
-        default=512,
+        default=1024,
         metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
     )
 
@@ -168,12 +168,12 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
 
 args = [
     "--report_to=tensorboard",
-    "--model_name_or_path=/data/searchgpt/yq/GoGPT/outputs-pt-v1-13b/",
+    "--model_name_or_path=/data/searchgpt/yq/GoGPT/vocab68k_pt_ckpt3000_alpaca_gpt4_llama_13b_output_opendata/checkpoint-1000/",
     # "--data_path=/data/searchgpt/yq/GoGPT/data/finetune/examples/Belle_open_source_0.5M.json",
-    "--data_path=/data/searchgpt/yq/GoGPT/data/demo/Belle_open_source_1k.json",
+    "--data_path=/data/searchgpt/yq/GoGPT/data/finetune/coig/human_value_alignment_instructions_part1.json",
     "--bf16=True",
-    "--output_dir=vocab68k_pt_ckpt4900_alpaca52kopendata120k_llma_13b_output",
-    "--cache_dir=vocab68k_pt_ckpt4900_alpaca52kopendata120k_llma_13b_output_cache",
+    "--output_dir=vocab68k_pt_ckpt4900_coig_llma_13b_output",
+    "--cache_dir=vocab68k_pt_ckpt4900_coig_llma_13b_output_cache",
     "--num_train_epochs=2",
     "--per_device_train_batch_size=1",
     "--per_device_eval_batch_size=1",
