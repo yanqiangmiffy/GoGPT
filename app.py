@@ -19,17 +19,8 @@ LlamaTokenizer,
 )
 
 
-model_name = "/home/searchgpt/pretrained_models/llama-13b-sft-500"
-model_name ="/home/searchgpt/pretrained_models/output-gogpt-rolechat"
-model_name = "/home/searchgpt/pretrained_models/gogpt-7b-v3"
-model_name ="/home/searchgpt/yq/GoGPT/vocab68k_pt_ckpt11000_alpaca52k_output" # 仅有英文
-model_name = "/home/searchgpt/yq/GoGPT/vocab68k_pt_ckpt11000_alpaca52k_output/checkpoint-6000" # 
 
-model_name = "/home/searchgpt/yq/GoGPT/vocab68k_pt_ckpt11000_alpaca52k_output" # 中英文混合
-#model_name = "/home/searchgpt/yq/GoGPT/vocab68k_pt_ckpt130000_belle3.5M_output/checkpoint-130000"
-#model_name ="/home/searchgpt/yq/GoGPT/vocab68k_pt_ckpt11000_alpaca52k_output/checkpoint-15000"
-
-model_name ="/home/searchgpt/pretrained_models/gogpt-13b-v1"
+model_name ="/data/searchgpt/yq/GoGPT/vocab68k_pt_ckpt4900_coig_llma_13b_output"
 max_new_tokens = 2048
 
 
