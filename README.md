@@ -1,6 +1,17 @@
 # GoGPT
 
-> 中文底座大模型：70亿参数、130亿参数
+
+<p align="center">
+    <br>
+    <img src="resources/assets/gogpt-banner-tou.png" width="600"/>
+    <br>
+</p>
+<p align="center">
+    <img alt="GitHub" src="https://img.shields.io/github/license/ymcui/Chinese-LLaMA-Alpaca.svg?color=blue&style=flat-square">
+    <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/ymcui/Chinese-LLaMA-Alpaca">
+</p>
+
+> ICT中英文底座增强大模型：70亿参数、130亿参数
 
 ## step1：训练分词器
 
@@ -49,4 +60,3 @@
 
 对于模型输出的任何内容，本项目不承担任何法律责任，亦不对因使用相关资源和输出结果而可能产生的任何损失承担责任。
 
-##  
