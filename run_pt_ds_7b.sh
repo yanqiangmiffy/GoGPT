@@ -1,0 +1,37 @@
+deepspeed  --num_gpus=8 step2_train_pt.py \
+    --model_type llama \
+    --model_name_or_path /data/searchgpt/pretrained_models/Llama-2-7b-chat-hf \
+    --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf_40k \
+    --train_file_dir /data/searchgpt/yq/GoGPT/data/pretrain/train \
+    --validation_file_dir /data/searchgpt/yq/GoGPT/data/pretrain/valid \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --do_train \
+    --do_eval \
+    --use_peft False \
+    --seed 2023 \
+    --fp16 True \
+    --num_train_epochs 1 \
+    --learning_rate 2e-4 \
+    --warmup_ratio 0.05 \
+    --weight_decay 0.01 \
+    --logging_strategy steps \
+    --logging_steps 10 \
+    --eval_steps 50 \
+    --evaluation_strategy steps \
+    --save_steps 1000 \
+    --save_strategy steps \
+    --save_total_limit 3 \
+    --gradient_accumulation_steps 2 \
+    --preprocessing_num_workers 32 \
+    --block_size 4096 \
+    --output_dir outputs-pt-v1-7b-llama2 \
+    --overwrite_output_dir \
+    --ddp_timeout 30000 \
+    --logging_first_step True \
+    --torch_dtype bfloat16 \
+    --device_map auto \
+    --report_to tensorboard \
+    --ddp_find_unused_parameters False \
+    --gradient_checkpointing True \
+    --deepspeed "configs/deepspeed_config.json"

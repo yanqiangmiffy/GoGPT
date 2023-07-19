@@ -1,8 +1,8 @@
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python  step3_train_sft_v2.py \
     --model_name_or_path /data/searchgpt/pretrained_models/gogpt-7b-v4 \
-    --data_path /data/searchgpt/yq/GoGPT/data/finetune/instruction_data \
+    --data_path /data/searchgpt/yq/GoGPT/data/finetune/searchgpt \
     --bf16 True \
-    --output_dir vocab68k_pt_gogptv4_instruction_7b_output_v5 \
+    --output_dir vocab68k_pt_gogptv4_instruction_7b_output_v6 \
     --num_train_epochs 2 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 1 \
@@ -14,5 +14,5 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python  step3_train_sft_v2.py \
     --learning_rate 2e-5 \
     --logging_steps 10 \
     --tf32 True \
-    --model_max_length 1024
+    --model_max_length 2048
 
