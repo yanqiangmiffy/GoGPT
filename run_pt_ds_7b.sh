@@ -1,6 +1,6 @@
 deepspeed  --num_gpus=8 step2_train_pt.py \
     --model_type llama \
-    --model_name_or_path /data/searchgpt/pretrained_models/Llama-2-7b-chat-hf \
+    --model_name_or_path /data/searchgpt/yq/GoGPT/outputs-pt-v1-7b-llama2/ckpt \
     --tokenizer_name_or_path /data/searchgpt/yq/how-to-train-tokenizer/merged_tokenizer_hf_40k \
     --train_file_dir /data/searchgpt/yq/GoGPT/data/pretrain/train \
     --validation_file_dir /data/searchgpt/yq/GoGPT/data/pretrain/valid \

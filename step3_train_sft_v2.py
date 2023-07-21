@@ -1,20 +1,20 @@
-from tqdm import tqdm
 import copy
 import logging
+import os
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Dict, Optional, Sequence
+from typing import List
 
 import torch
 import transformers
-from torch.utils.data import Dataset
-from transformers import Trainer
 from datasets import load_dataset
-from typing import List
-import os
-import logging
+from torch.utils.data import Dataset
+from tqdm import tqdm
 from transformers import DataCollatorForSeq2Seq
-from functools import partial
-from transformers import AutoTokenizer,LlamaTokenizer,LlamaForCausalLM
+from transformers import LlamaTokenizer
+from transformers import Trainer
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,7 +80,7 @@ class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
     model_max_length: int = field(
-        default=512,
+        default=4096,
         metadata={
             "help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
     )
@@ -134,7 +134,7 @@ class SupervisedDataset(Dataset):
         super(SupervisedDataset, self).__init__()
         logging.warning("Loading data...")
         list_data_dict = load_dataset_from_path(data_path=data_path)
-
+        logger.info(len(list_data_dict))
         logging.warning("Formatting inputs...")
         prompt_input, prompt_no_input = PROMPT_DICT["prompt_input"], PROMPT_DICT["prompt_no_input"]
         sources = [
@@ -183,9 +183,9 @@ def make_train_dataset(tokenizer: transformers.PreTrainedTokenizer, data_path: s
         #     sources.append(s_t)
 
         sources = [prompt_input.format_map({'instruction': ins_data[i], 'input': input_data[i]}) if input_data[
-            i] != "" else prompt_no_input.format_map(
+                                                                                                        i] != "" else prompt_no_input.format_map(
             {'instruction': ins_data[i]})
-            for i in range(len_)]
+                   for i in range(len_)]
         targets = [
             f"{example}{tokenizer.eos_token}" for example in output]
 
@@ -240,11 +240,13 @@ def train():
     model = transformers.LlamaForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
-        # device_map='auto',
+        device_map='auto',
         # torch_dtype='auto'
-        torch_dtype=torch.bfloat16
+        # torch_dtype=torch.bfloat16
 
     )
+    model.half()
+    model.to(torch.bfloat16)
     model.is_parallelizable = True
     model.model_parallel = True
     torch.cuda.empty_cache()
@@ -277,4 +279,3 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S"
     )
     train()
-
