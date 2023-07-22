@@ -1,5 +1,6 @@
 # GoGPT
 
+> GoGPT:基于Llama/Llama 2训练的中英文增强大模型
 
 <p align="center">
     <br>
