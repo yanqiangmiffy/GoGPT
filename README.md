@@ -1,6 +1,6 @@
 # GoGPT
 
-> GoGPT:基于Llama/Llama 2训练的中英文增强大模型
+> GoGPT:ICT中英文底座增强大模型,基于Llama/Llama 2训练的底座大模型,参数规模包括70亿参数、130亿参数
 
 <p align="center">
     <br>
@@ -12,7 +12,7 @@
     <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/ymcui/Chinese-LLaMA-Alpaca">
 </p>
 
-> ICT中英文底座增强大模型：70亿参数、130亿参数
+> 
 
 ## step1：训练分词器
 
