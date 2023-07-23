@@ -42,6 +42,9 @@ tokenizer = AutoTokenizer.from_pretrained("golaxy/gogpt2-7b")
 model = AutoModelForCausalLM.from_pretrained("golaxy/gogpt2-7b")
 ```
 
+## 大模型技术交流群
+
+![ce6ad8231b096c380b6f575c7095a4c](https://github.com/yanqiangmiffy/GoGPT/assets/15925090/5403509e-26ee-44d8-9ab5-336959cd9e7c)
 
 ## 测试效果
 - 西瓜和南瓜有什么区别
@@ -164,6 +167,7 @@ print(sorted_arr)
 模型生成的内容受模型计算、随机性和量化精度损失等因素影响，本项目不对其准确性作出保证。
 
 对于模型输出的任何内容，本项目不承担任何法律责任，亦不对因使用相关资源和输出结果而可能产生的任何损失承担责任。
+
 
 ## 研究与开发团队
 
