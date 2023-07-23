@@ -46,6 +46,7 @@ def load_dataset_from_path(data_path: Optional[str] = None,
         data_files=data_files,
         cache_dir=cache_dir,
     )['train']
+    print(len(raw_datasets))
     return raw_datasets
 
 
@@ -134,7 +135,6 @@ class SupervisedDataset(Dataset):
         super(SupervisedDataset, self).__init__()
         logging.warning("Loading data...")
         list_data_dict = load_dataset_from_path(data_path=data_path)
-        logger.info(len(list_data_dict))
         logging.warning("Formatting inputs...")
         prompt_input, prompt_no_input = PROMPT_DICT["prompt_input"], PROMPT_DICT["prompt_no_input"]
         sources = [
@@ -240,9 +240,9 @@ def train():
     model = transformers.LlamaForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
-        device_map='auto',
+        # device_map='auto',
         # torch_dtype='auto'
-        # torch_dtype=torch.bfloat16
+        torch_dtype=torch.bfloat16
 
     )
     model.half()
