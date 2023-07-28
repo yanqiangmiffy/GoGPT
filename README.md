@@ -155,6 +155,7 @@ print(sorted_arr)
 - belle数据：120k数据 v1
 - stanford_alapca：52k数据 v2
 - [sharegpt](data%2Ffinetune%2Fsharegpt):90k数据
+![image](https://github.com/yanqiangmiffy/GoGPT/assets/15925090/64125339-b6d1-42ba-a271-2e9f90c161ee)
 
 ### step4: 强化学习
 
