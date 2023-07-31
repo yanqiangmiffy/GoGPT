@@ -67,4 +67,10 @@ NousResearch
 ```
 
 ### 4 多轮对话数据怎么构造
+- 方式1：训练时，我们将多轮对话拼接成如下格式，然后进行tokenize。其中<s>表示bos_token，</s> 表示eos_token。
+```text
+<s>input1</s>target1</s>input2</s>target2</s>...
+```
+> https://github.com/yangjianxin1/Firefly
 
+在计算loss时，我们通过mask的方式，input部分的loss不参与参数更新，只有“target”部分的loss参与参数更新。 这种方式充分利用了模型并行计算的优势，训练更加高效，且多轮对话中的每个target部分都参与了训练，训练更充分。 否则，就需要把一个n轮对话，拆分成n条数据，且只计算最后一个target的loss，大大降低了训练效率。
