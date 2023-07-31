@@ -66,6 +66,57 @@ NousResearch
 
 ```
 
+Yayi
+> https://huggingface.co/wenge-research/yayi-7b-llama2
+> 
+```text
+prompt = "你是谁？"
+formatted_prompt = f"""<|System|>:
+You are a helpful, respectful and honest assistant named YaYi developed by Beijing Wenge Technology Co.,Ltd. Always answer as helpfully as possible, while being safe. Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.\n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
+
+<|Human|>:
+{prompt}
+
+<|YaYi|>:
+"""
+```
+
+StableBeluga2
+> https://huggingface.co/stabilityai/StableBeluga2
+```text
+### System:
+This is a system prompt, please behave and help the user.
+
+### User:
+Your prompt here
+
+### Assistant:
+The output of Stable Beluga 2
+```
+比如
+```text
+system_prompt = "### System:\nYou are Stable Beluga, an AI that follows instructions extremely well. Help as much as you can. Remember, be safe, and don't do anything illegal.\n\n"
+
+message = "Write me a poem please"
+prompt = f"{system_prompt}### User: {message}\n\n### Assistant:\n"
+```
+
+
+llama-2-70b-Guanaco-QLoRA-fp16
+```text
+### Human: {prompt}
+### Assistant:
+```
+
+```text
+prompt = "Introduce yourself"
+formatted_prompt = (
+    f"A chat between a curious human and an artificial intelligence assistant."
+    f"The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
+    f"### Human: {prompt} ### Assistant:"
+)
+```
+
 ### 4 多轮对话数据怎么构造
 - 方式1：训练时，我们将多轮对话拼接成如下格式，然后进行tokenize。其中<s>表示bos_token，</s> 表示eos_token。
 ```text
@@ -89,4 +140,53 @@ NousResearch
 export PATH=/usr/local/cuda-12.2/bin:$PATH  
 export LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda-12.2/
+```
+
+### 6 常见英文微调数据集有哪些
+```text
+1、 模型1 https://huggingface.co/NousResearch/Nous-Hermes-Llama2-13b
+
+
+GPTeacher was made available by Teknium
+https://huggingface.co/datasets/teknium/GPTeacher-General-Instruct
+
+Wizard LM by nlpxucan
+https://huggingface.co/datasets/WizardLM/WizardLM_evol_instruct_V2_196k
+
+
+Nous Research Instruct Dataset was provided by Karan4D and HueminArt.
+
+
+
+
+GPT4-LLM and Unnatural Instructions were provided by Microsoft
+https://huggingface.co/datasets/teknium/GPT4-LLM-Cleaned?clone=true
+
+Airoboros dataset by jondurbin
+https://huggingface.co/datasets/jondurbin/airoboros-gpt4-m2.0?clone=true
+
+
+Camel-AI's domain expert datasets are from Camel-AI
+CodeAlpaca dataset by Sahil 2801.
+
+
+
+2、模型2 https://huggingface.co/stabilityai/StableBeluga2
+
+
+/home/searchgpt/pretrained_models/data/WizardLM_evol_instruct_V2_143k/WizardLM_evol_instruct_V2_143k.jsonl
+
+
+/home/searchgpt/pretrained_models/gogpt2-7b
+
+/home/searchgpt/yq/Firefly/output/firefly-llama2-7b/final
+
+
+/home/searchgpt/yq/Firefly/checkpoint/gogpt2-7b-qlora-sft-merge
+
+Run "huggingface-cli lfs-enable-largefiles ./path/to/your/repo" and try again.
+Run "huggingface-cli lfs-enable-largefiles ./path/to/your/repo" and try again.
+
+
+/data/searchgpt/yq/GoGPT/outputs-pt-v1-13b-llama2
 ```
