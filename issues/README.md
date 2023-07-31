@@ -74,3 +74,19 @@ NousResearch
 > https://github.com/yangjianxin1/Firefly
 
 在计算loss时，我们通过mask的方式，input部分的loss不参与参数更新，只有“target”部分的loss参与参数更新。 这种方式充分利用了模型并行计算的优势，训练更加高效，且多轮对话中的每个target部分都参与了训练，训练更充分。 否则，就需要把一个n轮对话，拆分成n条数据，且只计算最后一个target的loss，大大降低了训练效率。
+
+
+### 5 Bugs:FAILED: multi_tensor_adam.cuda.o 
+
+```text
+原因：CUDA环境变量没有配置正确：
+/bin/sh: /usr/usr/local/cuda-12.2/bin/nvcc: No such file or directory
+```
+改成`/usr/local/cuda-12.2/bin/nvcc`即可
+
+正确配置如下
+```text
+export PATH=/usr/local/cuda-12.2/bin:$PATH  
+export LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64:$LD_LIBRARY_PATH
+export CUDA_HOME=/usr/local/cuda-12.2/
+```
