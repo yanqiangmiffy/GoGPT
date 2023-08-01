@@ -21,13 +21,15 @@
 ## ⏬模型下载
 
 ### 🤗HuggingFace仓库
-Huggingface上提供了GoGPT权重，目前开放了gogpt-7b和gogpt2-7b权重
+Huggingface上提供了GoGPT权重，目前开放了gogpt-7b、gogpt2-7b、gogpt-13b权重
 
 | 模型名称                                                        | 基座模型      | 模型大小 | 下载地址                                            |
 |-------------------------------------------------------------|-----------|------|-------------------------------------------------|
 | [golaxy/gogpt-7b](https://huggingface.co/golaxy/gogpt-7b)   | Llama-7b  | 7B   | [模型下载](https://huggingface.co/golaxy/gogpt-7b)  |
-| [golaxy/gogpt2-7b](https://huggingface.co/golaxy/gogpt2-7b) | Llama2-7b | 7B   | [模型下载](https://huggingface.co/golaxy/gogpt2-7b) |                                             
-
+| [golaxy/gogpt2-7b](https://huggingface.co/golaxy/gogpt2-7b) | Llama2-7b | 7B   | [模型下载](https://huggingface.co/golaxy/gogpt2-7b) |     
+| [golaxy/gogpt2-7b-pretrain](https://huggingface.co/golaxy/gogpt2-7b-pretrain) | Llama2-7b | 7B   | [模型下载](https://huggingface.co/golaxy/gogpt2-7b-pretrain) |    
+| [golaxy/gogpt2-13b-pretrain](https://huggingface.co/golaxy/gogpt2-13b-pretrain) | Llama2-13b | 13B   | [模型下载](https://huggingface.co/golaxy/gogpt2-13b-pretrain) |    
+| [golaxy/gogpt2-13b](https://huggingface.co/golaxy/gogpt2-13b) | Llama2-13b | 13B   | [模型下载](https://huggingface.co/golaxy/gogpt2-13b) |   
 ### 🚀代码调用
 - golaxy/gogpt-7b
 ```python
