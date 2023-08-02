@@ -48,15 +48,25 @@ tokenizer = AutoTokenizer.from_pretrained("golaxy/gogpt2-7b")
 model = AutoModelForCausalLM.from_pretrained("golaxy/gogpt2-7b")
 ```
 
-## 大模型技术交流群
-
-![ce6ad8231b096c380b6f575c7095a4c](https://github.com/yanqiangmiffy/GoGPT/assets/15925090/5403509e-26ee-44d8-9ab5-336959cd9e7c)
-
-### 对话测试
+### CLI测试
 
 ```shell
 python cli.py
 ```
+
+### Gradio部署
+
+```shell
+python app.py
+```
+
+![image](https://github.com/yanqiangmiffy/GoGPT/assets/15925090/c295924d-a353-40d7-9d1a-a268026dc898)
+
+## 大模型技术交流群
+
+![ce6ad8231b096c380b6f575c7095a4c](https://github.com/yanqiangmiffy/GoGPT/assets/15925090/5403509e-26ee-44d8-9ab5-336959cd9e7c)
+
+
 
 ## 测试效果
 - 西瓜和南瓜有什么区别
