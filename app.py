@@ -1,9 +1,9 @@
 # -*-coding:utf-8-*-
 
-from typing import Optional
 import datetime
 import os
 from threading import Event, Thread
+from typing import Optional
 from uuid import uuid4
 
 import gradio as gr
@@ -11,34 +11,29 @@ import requests
 import torch
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer,
-LlamaTokenizer,
+    LlamaTokenizer,
     StoppingCriteria,
     StoppingCriteriaList,
     TextIteratorStreamer,
 )
 
-
-
-model_name ="/data/searchgpt/yq/GoGPT/vocab68k_pt_ckpt4900_coig_llma_13b_output"
+model_name = "golaxy/gogpt2-7b"
 max_new_tokens = 2048
 
-
 print(f"Starting to load the model {model_name} into memory")
-#tok=AutoTokenizer.from_pretrained(model_name)
+# tok=AutoTokenizer.from_pretrained(model_name)
 tok = LlamaTokenizer.from_pretrained(model_name)
 print(tok)
-#m = AutoModelForCausalLM.from_pretrained(model_name).eval()
+# m = AutoModelForCausalLM.from_pretrained(model_name).eval()
 m = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 m.half()
 m.eval()
 
-print("m=====>device",m.device)
+print("m=====>device", m.device)
 # tok.convert_tokens_to_ids(["<|im_end|>", "<|endoftext|>"])
 stop_token_ids = [tok.eos_token_id]
 
 print(f"Successfully loaded the model {model_name} into memory")
-
 
 
 class StopOnTokens(StoppingCriteria):
@@ -64,20 +59,15 @@ PROMPT_DICT = {
 
 
 def generate_input(instruction: Optional[str] = None, input_str: Optional[str] = None) -> str:
-    if input_str is None:
-        return PROMPT_DICT['prompt_no_input'].format_map({'instruction': instruction})
-    else:
-        return PROMPT_DICT['prompt_input'].format_map({'instruction': instruction, 'input': input_str})
+    input_pattern = '<s>{}</s>'
+    return input_pattern.format(instruction)
 
 
 def convert_history_to_text(history):
-
     user_input = history[-1][0]
 
     text = generate_input(user_input)
     return text
-
-
 
 
 def log_conversation(conversation_id, history, messages, generate_kwargs):
@@ -169,12 +159,24 @@ def get_uuid():
     return str(uuid4())
 
 
-with gr.Blocks(
-    theme=gr.themes.Soft(),
-    css=".disclaimer {font-variant-caps: all-small-caps;}",
-) as demo:
+# with gr.Blocks(
+#     # theme=gr.themes.Soft(),
+#     css=".disclaimer {font-variant-caps: all-small-caps;}",
+# ) as demo:
+with gr.Blocks(title="GoGPT-7B",
+               # theme=gr.themes.Soft(),
+               css=".disclaimer {font-variant-caps: all-small-caps;}"
+               ) as demo:
+    gr.Markdown(
+        """ # <center>gogpt-7b-chat</center>
+
+        ### <center>🤗Huggingface：https://huggingface.co/golaxy</center>
+
+    """
+    )
+
     conversation_id = gr.State(get_uuid)
-    chatbot = gr.Chatbot().style(height=500)
+    chatbot = gr.Chatbot().style(height=800)
     with gr.Row():
         with gr.Column():
             msg = gr.Textbox(
@@ -194,7 +196,7 @@ with gr.Blocks(
                     with gr.Row():
                         temperature = gr.Slider(
                             label="Temperature",
-                            value=0.1,
+                            value=0.9,
                             minimum=0.0,
                             maximum=1.0,
                             step=0.1,
@@ -205,7 +207,7 @@ with gr.Blocks(
                     with gr.Row():
                         top_p = gr.Slider(
                             label="Top-p (nucleus sampling)",
-                            value=1.0,
+                            value=0.95,
                             minimum=0.0,
                             maximum=1,
                             step=0.01,
@@ -219,7 +221,7 @@ with gr.Blocks(
                     with gr.Row():
                         top_k = gr.Slider(
                             label="Top-k",
-                            value=0,
+                            value=50,
                             minimum=0.0,
                             maximum=200,
                             step=1,
@@ -289,5 +291,4 @@ with gr.Blocks(
     clear.click(lambda: None, None, chatbot, queue=False)
 
 demo.queue(max_size=128, concurrency_count=2)
-demo.launch(server_name="0.0.0.0",server_port=7777)  
-
+demo.launch(server_name="0.0.0.0", server_port=8888)
