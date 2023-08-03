@@ -75,4 +75,12 @@ for cate in df['id_prefix'].unique():
 sample_df=pd.concat(tmp,axis=0)
 print(sample_df['id_prefix'].value_counts())
 
+
+
+sample_df['con_lens']=sample_df['conversations'].apply( lambda  x:len(x))
+print(sample_df['con_lens'].describe())
+print(sample_df['con_lens'].value_counts())
+print(sample_df[sample_df['con_lens']==0])
+sample_df=sample_df[sample_df['con_lens']!=0].reset_index(drop=True)
 sample_df.to_parquet('sample_df_532k.parquet')
+sample_df.to_json("sample_df_532k.json", orient="records", lines=True, force_ascii=False)

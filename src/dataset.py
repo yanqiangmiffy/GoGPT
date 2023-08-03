@@ -44,50 +44,51 @@ class SFTDataset(Dataset):
         data = json.loads(data)
         conversation = data['conversations']
 
-        if "instruction" in data and len(data["instruction"]) > 0:
-            system = data["instruction"]
-        else:
-            system = dummy_message["system"]
-        system = B_SYS + system + E_SYS
-        # add system before the first content in conversations
-        data["conversations"][0]['value'] = system + data["conversations"][0]['value']
-
-        # 收集多轮对话
-        utterances = []
-        for idx, x in enumerate(conversation):
-            # if x['from'] == 'human' and idx % 2 == 0:
-            if x['from'] == 'human':
-                content = x['value'].replace('MOSS', 'GoGPT').replace('moss', 'GoGPT')
-                content = content.strip()
-                content = f"{B_INST} {content} {E_INST} "
-                utterances.append(content)
-            # if x['from']=='gpt'and idx%2==1:
+        if len(data["conversations"])>0:
+            if "instruction" in data and len(data["instruction"]) > 0:
+                system = data["instruction"]
             else:
-                # assert role == "gpt"
-                content = x['value'].replace('MOSS', 'GoGPT').replace('moss', 'GoGPT')
-                content = f"{content} "
-                utterances.append(content)
-        print(utterances)
-        utterances_ids = self.tokenizer(utterances, add_special_tokens=False).input_ids
+                system = dummy_message["system"]
+            system = B_SYS + system + E_SYS
+            # add system before the first content in conversations
+            data["conversations"][0]['value'] = system + data["conversations"][0]['value']
 
-        # 模型的输入格式为：<s>input1</s>target1</s>input2</s>target2</s>...
-        input_ids = [self.bos_token_id]
-        target_mask = [0]  # 用于对input进行mask，只计算target部分的loss
-        for i, utterances_id in enumerate(utterances_ids):
-            input_ids += (utterances_id + [self.eos_token_id])
-            if i % 2 == 0:
-                target_mask += [0] * (len(utterances_id) + 1)
-            else:
-                target_mask += [1] * (len(utterances_id) + 1)
-        assert len(input_ids) == len(target_mask)
-        # 对长度进行截断
-        input_ids = input_ids[:self.max_seq_length]
-        target_mask = target_mask[:self.max_seq_length]
-        attention_mask = [1] * len(input_ids)
-        assert len(input_ids) == len(target_mask) == len(attention_mask)
-        inputs = {
-            'input_ids': input_ids,
-            'attention_mask': attention_mask,
-            'target_mask': target_mask
-        }
-        return inputs
+            # 收集多轮对话
+            utterances = []
+            for idx, x in enumerate(conversation):
+                # if x['from'] == 'human' and idx % 2 == 0:
+                if x['from'] == 'human':
+                    content = x['value'].replace('MOSS', 'GoGPT').replace('moss', 'GoGPT')
+                    content = content.strip()
+                    content = f"{B_INST} {content} {E_INST} "
+                    utterances.append(content)
+                # if x['from']=='gpt'and idx%2==1:
+                else:
+                    # assert role == "gpt"
+                    content = x['value'].replace('MOSS', 'GoGPT').replace('moss', 'GoGPT')
+                    content = f"{content} "
+                    utterances.append(content)
+            # print(utterances)
+            utterances_ids = self.tokenizer(utterances, add_special_tokens=False).input_ids
+
+            # 模型的输入格式为：<s>input1</s>target1</s>input2</s>target2</s>...
+            input_ids = [self.bos_token_id]
+            target_mask = [0]  # 用于对input进行mask，只计算target部分的loss
+            for i, utterances_id in enumerate(utterances_ids):
+                input_ids += (utterances_id + [self.eos_token_id])
+                if i % 2 == 0:
+                    target_mask += [0] * (len(utterances_id) + 1)
+                else:
+                    target_mask += [1] * (len(utterances_id) + 1)
+            assert len(input_ids) == len(target_mask)
+            # 对长度进行截断
+            input_ids = input_ids[:self.max_seq_length]
+            target_mask = target_mask[:self.max_seq_length]
+            attention_mask = [1] * len(input_ids)
+            assert len(input_ids) == len(target_mask) == len(attention_mask)
+            inputs = {
+                'input_ids': input_ids,
+                'attention_mask': attention_mask,
+                'target_mask': target_mask
+            }
+            return inputs
