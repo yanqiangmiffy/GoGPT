@@ -1,4 +1,4 @@
-## 模型训练问题记录
+## 模型训练记录QA
 
 ### 1 在gogpt底座微调（sft）阶段，出现学习率为0
 学习率慢慢变为0，一开始还是正常的学习预热+衰减，但是到后期（比如迭代2000步）之后，学习率直接变为0了。
@@ -196,9 +196,33 @@ Run "huggingface-cli lfs-enable-largefiles ./path/to/your/repo" and try again.
 [E ProcessGroupNCCL.cpp:828] [Rank 1] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=11455, OpType=BROADCAST, Timeout(ms)=1800000)
  ran for 1806422 mi
 ```
-![img.png](assets/issue_7.png)
+![img.png](assets/issue7.png)
 
 解决方案：
 ```text
 把timeout改大 or 修改为streaming datasets方式
 ```
+
+### 8 指令数据集怎么配比？
+中文尽量均衡 1:1，任务多样性
+![img.png](assets/issue8.png)
+
+### 9 RuntimeError: CUDA error: uncorrectable ECC error encountered 
+
+显卡长时间运行，可能会有些物理故障
+```text
+RuntimeError: CUDA error: uncorrectable ECC error encountered
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertio
+```
+![img.png](assets/issue9.png)
+
+### 10 大模型微调有哪些经验
+稍微总结下微调的思路，请按顺序看：
+- （1）🚩数据集尽量多样性，避免跑完之后再跑（这个还没验证过多次叠加微调是否有影响，但是不如完整的跑完比较靠谱），所以每次微调之前，不要着急！，要想好这次跑的目的是为了什么，尽量把思路梳理清楚，数据集准备好，避免来回折腾
+- （2）🚩数据集可能需要过滤的地方：（a）语言，是否除了中英文还包含其他语言（b）长度，个人认为尽量训练数据选择长一点的比较好，这样测试的时候生成效果直观上是“挺不错的”(c) 中英文配比：尽量不要只加中文或者英文，如果中文能力弱，可以尽量使用多一点中文，然后配比一些英文数据，可以激发模型的中文对齐的效果。（d）还有事先最好检查下微调数据集中是否存在卖点数据，比如数据集里面存在，我是GPT4助手、MOSS助手，其实你要想要的是你助手的名字。
+- （3）🚩数据集选择：从一些项目可以看到，在不扩充词表的情况下，数据量大也可以出奇迹，但是不扩充词表的情况下，模型在推理使用的时候上下文能力是首先的，之前在《how-to-train-tokenizer》里面分析过，扩充词表之后分词效率特别高（比如之前接受1000中文字符，可能现在可以接受4000中文字符）。在这种情况下，可以采用多样性的数据集进来，比如多轮对话、alpaca指令数据、社区问答、角色扮演、gpt4等等。
+- （4）🚩关于第一条，验证过，现在100多万数据不是moss的吗，里面有“MOSS xxx的”埋点数据，然后现在通过Lora修正了模型，可以回复“GoGPT助手了”，定性分析了一些例子，是没问题的。现在就是提交到open llm上了，看看效果差别大不大。到时候有结论了告诉大家。（没有量化评估，open llm lb测的太慢了），线下测了一些效果也是可以的。另外prompt的影响在sft之后可以忽律不计，不同的提示对后期模型推理几乎不影响
+- （5）🚩继续微调（continue sft）：第一次跑的是多轮对话的数据和一些alpaca 类似的数据，这次按照一些配比继续跑532k的多样性数据，发现效果是可以叠加的，另外之前训练的效果还存在，
+- （6）🚩发现在中文预训练和sft之后，然后用一些英文的指令数据集能增强模型的指令对齐能力。
