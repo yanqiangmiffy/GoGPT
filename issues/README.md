@@ -190,3 +190,15 @@ Run "huggingface-cli lfs-enable-largefiles ./path/to/your/repo" and try again.
 
 /data/searchgpt/yq/GoGPT/outputs-pt-v1-13b-llama2
 ```
+
+### 7 NCCL通信超时
+```text
+[E ProcessGroupNCCL.cpp:828] [Rank 1] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=11455, OpType=BROADCAST, Timeout(ms)=1800000)
+ ran for 1806422 mi
+```
+![img.png](assets/issue_7.png)
+
+解决方案：
+```text
+把timeout改大 or 修改为streaming datasets方式
+```
