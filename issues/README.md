@@ -11,7 +11,8 @@ gradient_accumulation_steps设置为1
 
 ### 2 在gogpt底座微调（sft）阶段，出现loss为0
 ![img.png](assets/issue2.png)
-
+（1）和数据集有关系,和数据集这个需要检查是否存在泄露，loss为0也是正常的
+（2）和累计梯度大小有关系，设置为1；和精度有关系，不用float16
 ### 3 指令微调的时候模板应该怎么设计？不用模板可以吗？
 
 常见的是stanford_alpaca中模板：
