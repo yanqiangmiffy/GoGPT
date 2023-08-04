@@ -227,3 +227,7 @@ Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertio
 - （4）🚩关于第一条，验证过，现在100多万数据不是moss的吗，里面有“MOSS xxx的”埋点数据，然后现在通过Lora修正了模型，可以回复“GoGPT助手了”，定性分析了一些例子，是没问题的。现在就是提交到open llm上了，看看效果差别大不大。到时候有结论了告诉大家。（没有量化评估，open llm lb测的太慢了），线下测了一些效果也是可以的。另外prompt的影响在sft之后可以忽律不计，不同的提示对后期模型推理几乎不影响
 - （5）🚩继续微调（continue sft）：第一次跑的是多轮对话的数据和一些alpaca 类似的数据，这次按照一些配比继续跑532k的多样性数据，发现效果是可以叠加的，另外之前训练的效果还存在，
 - （6）🚩发现在中文预训练和sft之后，然后用一些英文的指令数据集能增强模型的指令对齐能力。
+
+### 11 模型sft之后 会出现循环输出的现象
+![issue11.png](assets%2Fissue11.png)
+![issue11_1.png](assets/issue11_1.png)
