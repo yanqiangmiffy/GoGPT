@@ -231,3 +231,29 @@ Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertio
 ### 11 模型sft之后 会出现循环输出的现象
 ![issue11.png](assets%2Fissue11.png)
 ![issue11_1.png](assets/issue11_1.png)
+
+### 12 OpenSSL 3.0's legacy provider failed to load.
+```text
+RuntimeError: Failed to import transformers.models.llama.modeling_llama because of the following error (look up to see its traceback):
+OpenSSL 3.0's legacy provider failed to load. This is a fatal error by default, but cryptography supports running without legacy algorithms by setting the environment variable CRYPTOGRAPHY_OPENSSL_NO_LEGACY. If you did not expect this error,
+ you have likely made a mistake with your OpenSSL configuration
+```
+修改方式：
+在虚拟环境下直接执行：export CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1
+### 13 `flash_attn_unpadded_qkvpacked_func`不能导入
+
+```text
+ImportError: cannot import name 'flash_attn_unpadded_qkvpacked_func'
+ from 'flash_attn.flash_attn_interface' (/data/searchgpt/anaconda3/envs/opencompass/lib/python3.10/site-packages/flash_attn/flash_attn_interface.py)
+
+```
+https://github.com/Dao-AILab/flash-attention
+```text
+## Upgrading from FlashAttention (1.x) to FlashAttention-2
+
+These functions have been renamed:
+- `flash_attn_unpadded_func` -> `flash_attn_varlen_func`
+- `flash_attn_unpadded_qkvpacked_func` -> `flash_attn_varlen_qkvpacked_func`
+- `flash_attn_unpadded_kvpacked_func` -> `flash_attn_varlen_kvpacked_func`
+
+```
