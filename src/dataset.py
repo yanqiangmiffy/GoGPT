@@ -44,7 +44,7 @@ class SFTDataset(Dataset):
         data = json.loads(data)
         conversation = data['conversations']
 
-        if len(data["conversations"])>0:
+        if len(data["conversations"]) > 0:
             if "instruction" in data and len(data["instruction"]) > 0:
                 system = data["instruction"]
             else:
@@ -92,3 +92,4 @@ class SFTDataset(Dataset):
                 'target_mask': target_mask
             }
             return inputs
+
