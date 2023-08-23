@@ -257,3 +257,14 @@ These functions have been renamed:
 - `flash_attn_unpadded_kvpacked_func` -> `flash_attn_varlen_kvpacked_func`
 
 ```
+
+### 14 Some NCCL operations have failed or timed out.
+```text
+[E ProcessGroupNCCL.cpp:460] To avoid data inconsistency, we are taking the entire process down.
+[E ProcessGroupNCCL.cpp:455] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[E ProcessGroupNCCL.cpp:460] To avoid data inconsistency, we are taking the entire process down.
+[E ProcessGroupNCCL.cpp:455] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[E ProcessGroupNCCL.cpp:460] To avoid data inconsistency, we are taking the entire process down.
+WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 76061 closing signal SIGTERM
+WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 76064 closing signal SIGTERM
+```
