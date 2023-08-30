@@ -37,7 +37,7 @@ def load_model():
     model = PeftModel.from_pretrained(model, '/model/query-chatglm-6b-lora')
 
     model = model.eval()
-
+    return model, tokenizer
 
 @app.post("/")
 async def create_item(request: Request):
@@ -65,5 +65,5 @@ async def create_item(request: Request):
 
 
 if __name__ == '__main__':
-    load_model()
+    model, tokenizer=load_model()
     uvicorn.run(app="run_query_api_chatglm:app", host='0.0.0.0', port=8893)
