@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: query
+spec:
+  ports:
+    - protocol: TCP
+      port: 8893 #服务映射端⼝
+      targetPort: 8893 #容器暴露端⼝
+  type: NodePort
+  selector:
+    app: query #匹配pod标签

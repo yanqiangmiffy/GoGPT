@@ -1,0 +1,55 @@
+apiVersion: "apps/v1"
+kind: Deployment
+metadata:
+  name: query
+spec:
+  replicas: 1
+  restartPolicy: OnFailure
+  selector:
+    matchLabels:
+      app: query
+  template:
+    metadata:
+      labels:
+        app: query
+      annotations:
+        sidecar.istio.io/inject: 'false'
+    spec:
+      volumes:
+        - name: modelpv
+          persistentVolumeClaim:
+            claimName: pretrained-models-volume
+        - name: codepv
+          persistentVolumeClaim:
+            claimName: code-belle-volume
+        - emptyDir:
+          medium: Memory
+          sizeLimit: 1Gi # 适量分配
+          name: cache-volume
+      containers:
+        - name: query
+          image: registry.ccloud.conestore.cn:8443/chatgpt/torch:v0.0.10
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /model
+              name: modelpv
+            - mountPath: /code
+              name: codepv
+            - mountPath: /dev/shm
+              name: cache-volume
+          resources:
+            limits:
+              cpu: 2
+              nvidia.com/gpu: 1
+              memory: "80Gi"
+            requests:
+              memory: "80Gi"
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          ports:
+            - containerPort: 8893
+              protocol: TCP
+          command:
+            - "sh"
+            - "/code/query/start.sh"
