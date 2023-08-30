@@ -16,11 +16,9 @@ import json
 import torch
 import uvicorn
 from fastapi import FastAPI, Request
-from loguru import logger
 from peft import PeftModel
 from transformers import AutoModel, AutoTokenizer
 
-logger.add('logs/query_api.log')
 app = FastAPI()
 
 
@@ -61,7 +59,7 @@ async def create_item(request: Request):
         "time": time
     }
     log = "===>[" + time + "]\n " + '", prompt:"\n' + raw_input_text + '", response:"\n' + repr(response) + '"'
-    logger.info(log)
+    print(log)
     torch_gc()
     return answer
 
