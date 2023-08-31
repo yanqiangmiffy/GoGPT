@@ -39,7 +39,7 @@ spec:
               name: cache-volume
           resources:
             limits:
-              cpu: 2
+              cpu: 4
               nvidia.com/gpu: 1
               memory: "80Gi"
             requests:

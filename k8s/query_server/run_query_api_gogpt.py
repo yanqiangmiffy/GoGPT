@@ -11,7 +11,6 @@
 """
 import datetime
 import json
-import logging
 
 import torch
 import uvicorn
@@ -19,7 +18,12 @@ from fastapi import FastAPI, Request
 from loguru import logger
 from transformers import LlamaForCausalLM, LlamaTokenizer
 
-logger.add('/model/output-gogpt2-3b-query/logs/query_api.log')
+print(torch.cuda.is_available() )# cuda是否可用
+print(torch.cuda.device_count() )# gpu数量
+print(torch.cuda.current_device())# 当前设备索引, 从0开始
+print(torch.cuda.get_device_name(0))# 返回gpu名字
+
+logger.add('/model/output-gogpt2-7b-query/logs/query_api.log')
 
 
 def torch_gc():
@@ -35,13 +39,19 @@ prompt_input = (
     "### Instruction:\n\n{instruction}\n\n### Response:\n\n"
 )
 
-model_name = '/model/output-gogpt2-3b-query'
-tokenizer = LlamaTokenizer.from_pretrained(model_name,
-                                           trust_remote_code=True)
-print(tokenizer)
-model = LlamaForCausalLM.from_pretrained(model_name,
-                                         trust_remote_code=True, device_map='auto').half()
-model.eval()
+
+def load_model():
+    global model, tokenizer
+    model_name = '/model/output-gogpt2-7b-query'
+    tokenizer = LlamaTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    print(tokenizer)
+    model = LlamaForCausalLM.from_pretrained(model_name, trust_remote_code=True).half()
+    model.eval()
+    model.to('cuda:0')
+    return model, tokenizer
+
+
+model, tokenizer = load_model()
 
 
 def generate_prompt(instruction, input=None):
@@ -50,7 +60,7 @@ def generate_prompt(instruction, input=None):
     return prompt_input.format_map({'instruction': instruction})
 
 
-@app.post("/")
+@app.post("/query")
 async def create_item(request: Request):
     global model, tokenizer
     json_post_raw = await request.json()
@@ -59,16 +69,16 @@ async def create_item(request: Request):
     raw_input_text = json_post_list.get('prompt')
 
     input_text = generate_prompt(instruction=raw_input_text)
-    print(f"{input_text}")
+    logger.info(f"{input_text}")
     inputs = tokenizer(input_text, return_tensors="pt")
 
     generate_kwargs = dict(
-        input_ids=inputs["input_ids"].to('cuda'),
+        input_ids=inputs["input_ids"].to('cuda:0'),
         max_new_tokens=1024,
         temperature=0.95,
         # do_sample=True,
-        top_p=1.0,
-        top_k=50,
+        top_p=0.9,
+        top_k=40,
         repetition_penalty=1.1,
     )
     generation_output = model.generate(bos_token_id=tokenizer.bos_token_id,
