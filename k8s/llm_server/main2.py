@@ -12,35 +12,26 @@
 
 import datetime
 import json
+
+import torch
 import uvicorn
 from fastapi import FastAPI, Request
 from transformers import AutoTokenizer, AutoModel
 from transformers import LlamaForCausalLM, LlamaTokenizer
 
-import torch
-
-print(torch.cuda.is_available() )# cuda是否可用
-print(torch.cuda.device_count() )# gpu数量
-print(torch.cuda.current_device())# 当前设备索引, 从0开始
-print(torch.cuda.get_device_name(0))# 返回gpu名字
+print(torch.cuda.is_available())  # cuda是否可用
+print(torch.cuda.device_count())  # gpu数量
+print(torch.cuda.current_device())  # 当前设备索引, 从0开始
+print(torch.cuda.get_device_name(0))  # 返回gpu名字
 
 app = FastAPI()
-
 
 DEVICE = "cuda"
 CHATGLM_DEVICE_ID = "0"
 CHATGLM_CUDA_DEVICE = f"{DEVICE}:{CHATGLM_DEVICE_ID}"
 
-
-
-
 GOGPT_DEVICE_ID = "1"
 GOGPT_CUDA_DEVICE = f"{DEVICE}:{GOGPT_DEVICE_ID}"
-
-DEVICE = "cuda"
-CHATGLM2_DEVICE_ID = "2"
-CHATGLM2_CUDA_DEVICE = f"{DEVICE}:{CHATGLM2_DEVICE_ID}"
-
 
 chatglm_tokenizer = AutoTokenizer.from_pretrained("/model/chatglm-6b", trust_remote_code=True)
 chatglm_model = AutoModel.from_pretrained(
@@ -50,16 +41,6 @@ chatglm_model = AutoModel.from_pretrained(
 ).half().to(CHATGLM_CUDA_DEVICE)
 chatglm_model.eval()
 print("chatglm加载成功")
-
-chatglm2_tokenizer = AutoTokenizer.from_pretrained("/model/chatglm2-6b", trust_remote_code=True)
-chatglm2_model = AutoModel.from_pretrained(
-    pretrained_model_name_or_path="/model/chatglm2-6b",
-    trust_remote_code=True,
-    torch_dtype=torch.bfloat16
-).half().to(CHATGLM2_CUDA_DEVICE)
-chatglm2_model.eval()
-print("chatglm2加载成功")
-
 
 gogpt2_tokenizer = LlamaTokenizer.from_pretrained("/model/gogpt2-7b-v4.4",
                                                   trust_remote_code=True)
@@ -71,8 +52,6 @@ gogpt2_model = LlamaForCausalLM.from_pretrained(
 
 gogpt2_model.eval()
 print("gogpt2加载成功")
-
-
 
 
 def torch_gc():
@@ -92,36 +71,6 @@ async def create_chatglm(request: Request):
     top_p = json_post_list.get('top_p')
     temperature = json_post_list.get('temperature')
     response, history = chatglm_model.chat(chatglm_tokenizer,
-                                           prompt,
-                                           history=[],
-                                           max_length=max_length if max_length else 2048,
-                                           top_p=top_p if top_p else 0.7,
-                                           temperature=temperature if temperature else 0.95)
-    now = datetime.datetime.now()
-    time = now.strftime("%Y-%m-%d %H:%M:%S")
-    answer = {
-        "response": response.replace('ChatGLM-6B', 'GoGPT').replace('chatglm-6b', 'GoGPT'),
-        "status": 200,
-        "time": time
-    }
-    log = "chatglm==>[" + time + "] " + '", prompt:"' + prompt + '", response:"' + repr(response) + '"'
-    print(log)
-    torch_gc()
-    return answer
-
-
-@app.post("/chatglm2")
-async def create_chatglm2(request: Request):
-    global chatglm2_model, chatglm2_tokenizer
-    json_post_raw = await request.json()
-    json_post = json.dumps(json_post_raw)
-    json_post_list = json.loads(json_post)
-    prompt = json_post_list.get('prompt')
-    # history = json_post_list.get('history')
-    max_length = json_post_list.get('max_length')
-    top_p = json_post_list.get('top_p')
-    temperature = json_post_list.get('temperature')
-    response, history = chatglm2_model.chat(chatglm2_tokenizer,
                                            prompt,
                                            history=[],
                                            max_length=max_length if max_length else 2048,
