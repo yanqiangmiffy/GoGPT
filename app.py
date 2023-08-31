@@ -55,12 +55,24 @@ PROMPT_DICT = {
         "Write a response that appropriately completes the request.\n\n"
         "### Instruction:\n{instruction}\n\n### Response:"
     ),
+    "prompt_simple":"### Instruction:\n{instruction}\n\n### Response:",
+    "prompt_system":"<s>{instruction}</s>"
 }
 
 
 def generate_input(instruction: Optional[str] = None, input_str: Optional[str] = None) -> str:
-    input_pattern = '<s>{}</s>'
-    return input_pattern.format(instruction)
+    print(PROMPT_DICT['prompt_system'])
+    print(PROMPT_DICT['prompt_system'].format_map({'instruction': instruction}))
+    return PROMPT_DICT['prompt_system'].format_map({'instruction': instruction})
+    if input_str is None:
+        return PROMPT_DICT['prompt_no_input'].format_map({'instruction': instruction})
+    else:
+        return PROMPT_DICT['prompt_input'].format_map({'instruction': instruction, 'input': input_str})
+
+
+# def generate_input(instruction: Optional[str] = None, input_str: Optional[str] = None) -> str:
+#     input_pattern = '<s>{}</s>'
+#     return input_pattern.format(instruction)
 
 
 def convert_history_to_text(history):
