@@ -268,3 +268,12 @@ These functions have been renamed:
 WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 76061 closing signal SIGTERM
 WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 76064 closing signal SIGTERM
 ```
+
+
+### 15 大模型微调后可能出现的经典Bad Case
+- 生成文本戛然而止
+```text
+
+综上所述,各方对香港促进股票市场流动性专责小组成立持不同的看法,但普遍认为这
+```
+- 模型重复生成效果差异比较大，甚至多次重复生成之后效果越来越差
