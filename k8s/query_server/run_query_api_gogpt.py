@@ -42,7 +42,7 @@ prompt_input = (
 
 def load_model():
     global model, tokenizer
-    model_name = '/model/output-gogpt2-7b-query'
+    model_name = '/model/output-gogpt2-7b-query-question-0906-2'
     tokenizer = LlamaTokenizer.from_pretrained(model_name, trust_remote_code=True)
     print(tokenizer)
     model = LlamaForCausalLM.from_pretrained(model_name, trust_remote_code=True).half()
