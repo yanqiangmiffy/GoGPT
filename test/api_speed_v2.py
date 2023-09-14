@@ -43,7 +43,8 @@ for question in questions:
     post_json = json.dumps(data)
     start_time = time.time()
     # r2 = requests.post("http://127.0.0.1:8890", data=post_json)
-    r2 = requests.post("http://172.16.120.23:31280/gogpt", data=post_json)
+    # r2 = requests.post("http://172.16.120.23:31280/gogpt", data=post_json)
+    r2 = requests.post("http://localhost:8890/api/", data=post_json)
     end_time = time.time()
 
     time_cost = end_time - start_time
@@ -52,3 +53,5 @@ for question in questions:
     df.append({'question': question, 'answer': response, 'time_cost': time_cost})
 
 pd.DataFrame(df).to_csv('llm_service_speed_local_v2.csv', index=False)
+
+
